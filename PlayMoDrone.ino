@@ -15,8 +15,7 @@ int servoPin13 = 13;  // Servo Pin
 
 int Rx = 11;
 int Tx = 10;
-int key = 12;
-int OctetRecu = 0;
+int OctetRecu = 99;
 
 // ultra sound detector
 int  trigger = 4;
@@ -27,6 +26,9 @@ long vitesse = 0;
 long temps;
 long temps_recul;
 int aleas; 
+
+int Drone = 12;
+boolean DroneModeActivated = true;
 
 Servo monServo;
 SoftwareSerial BTmavoieserie(Rx, Tx); // (RX, TX) (pin Rx BT, pin Tx BT)
@@ -66,9 +68,8 @@ void setup() {
   // Ouvre la voie série avec le module BT
   BTmavoieserie.begin(9600);
 
-  pinMode(key, OUTPUT);
-  pinMode(key, LOW);
-}
+  pinMode(Drone, OUTPUT);
+  }
 
 // -------------------- END SETUP --------------
 
@@ -141,13 +142,14 @@ int mesure_distance() {
 }
 
 void DroneMode() {
+  digitalWrite(Drone, HIGH);
   int aleatoire_vitesse;
   int aleatoire_angle;
   
   distance = mesure_distance();
   vitesse = distance/1;
 
-  if (distance<20) {
+  if (distance<30) {
     moveBackward(127);
 
     if((millis() - temps_recul) > 5000) {
@@ -175,11 +177,23 @@ void DroneMode() {
 // -------------------- BEGIN LOOP --------------
 void loop() {
   
+  if (DroneModeActivated) digitalWrite(Drone, HIGH); else digitalWrite(Drone, LOW);
+  
   if (BTmavoieserie.available()) {
     OctetRecu = BTmavoieserie.read();
     Serial.print(OctetRecu);
     Serial.println(" : par le canal BlueTooth");
-  
+    if (OctetRecu == 67) DroneModeActivated = true;
+    if (OctetRecu == 68) DroneModeActivated = false;
+    
+    Serial.print(DroneModeActivated);
+    Serial.println(" : DroneModeActivated");        
+
+  }
+  if (DroneModeActivated) {
+    DroneMode();
+  }
+  else {
     switch (OctetRecu) {
     // source https://play.google.com/store/apps/details?id=com.inex.BlueStickControl&hl=en
     //This application use bluetooth connection in Serial Port Profile (SPP).Send hex code to robot as follows :
@@ -194,29 +208,29 @@ void loop() {
     //0x44 = 0d68 = 'D' = Release
     //0x45 = 0d69 = 'E' = Rotate Left
     //0x46 = 0d70 = 'F' = Rotate Right
-      case 38:
-        moveForward(vitesse);
+      case 56:
+        moveForward(255);
         Serial.println("en avant toute");        
         break;
+
       case 50:
-        moveBackward(vitesse);
+        moveBackward(255);
         Serial.println("en arrière toute");        
         break;
+
       case 48:
         digitalWrite(enablePin, LOW); // le moteur passe en roue libre
+        turn_straight(); // les roues se mettent droite
         break;
-      case 0x52:
+
+      case 52:
         turn_left();
         Serial.println("à gauche toute");
         break;
-      case 6:
+
+      case 54:
         turn_right();
         Serial.println("à droite toute");
-        break;
-  
-      default:
-        // if nothing matches, go into drone mode
-        DroneMode() ;
         break;
     }
   }
