@@ -4,6 +4,7 @@
 
 #include <Servo.h>
 #include <SoftwareSerial.h>
+#include <NewPing.h>
 
 // Bluetooth done with http://www.wikidebrouillard.org/index.php/Android_et_arduino and http://eskimon.fr/2498-arduino-annexes-g-utiliser-module-bluetooth-hc-05
 
@@ -139,16 +140,20 @@ int mesure_distance() {
 void DroneMode() {
   int aleatoire_vitesse;
   int aleatoire_angle;
+  int aleas;
   distance = mesure_distance();
   vitesse = distance/1;
+
+  aleas = random(2);
   
-  if (distance<25) {
+  if (distance<20) {
     moveBackward(127);
-    turn_left();
+    if (aleas == 1) turn_left();
+    else turn_right();
   }  
-  if (distance>25) {
-    if((millis() - temps) > 5000) {
-      aleatoire_vitesse = random(256);
+  else {
+    if((millis() - temps) > 2000) {
+      aleatoire_vitesse = random(127,256);
       aleatoire_angle = random(181);
       moveForward(aleatoire_vitesse);
       monServo.write(aleatoire_angle);
