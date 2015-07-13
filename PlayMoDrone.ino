@@ -18,8 +18,8 @@ int Tx = 10;
 int key = 12;
 
 // ultra sound detector
-int trigger = 4;
-int echo = 2;
+int  trigger = 4;
+int  echo = 2;
 long distance = 0;
 long vitesse = 0;
 
@@ -27,6 +27,7 @@ long temps;
 
 Servo monServo;
 SoftwareSerial BTmavoieserie(Rx, Tx); // (RX, TX) (pin Rx BT, pin Tx BT)
+NewPing sonar(trigger, echo, 255);
 
 // -------------------- BEGIN SETUP --------------
 void setup() {
@@ -120,15 +121,11 @@ void moveStop() {
 int mesure_distance() {
   long time = 0;
   long distance = 0; 
-  
-  digitalWrite(trigger, LOW);
-  delay(5);
-  digitalWrite(trigger, HIGH);
-  delay(10);
-  digitalWrite(trigger, LOW);
-  time = pulseIn(echo, HIGH);
-  
-  distance = (time/2) / 29.1;
+  long echoTime;
+
+  echoTime = sonar.ping_median(5); //Do multiple pings (default=5), discard out of range pings and return median in microseconds 
+  distance = sonar.convert_cm(echoTime);
+
   if ( distance >= 255 || distance <= 0)
   {
     Serial.println("No measurement");
