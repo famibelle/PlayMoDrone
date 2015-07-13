@@ -16,6 +16,7 @@ int servoPin13 = 13;  // Servo Pin
 int Rx = 11;
 int Tx = 10;
 int key = 12;
+int OctetRecu = 0;
 
 // ultra sound detector
 int  trigger = 4;
@@ -24,6 +25,8 @@ long distance = 0;
 long vitesse = 0;
 
 long temps;
+long temps_recul;
+int aleas; 
 
 Servo monServo;
 SoftwareSerial BTmavoieserie(Rx, Tx); // (RX, TX) (pin Rx BT, pin Tx BT)
@@ -119,7 +122,6 @@ void moveStop() {
 }
 
 int mesure_distance() {
-  long time = 0;
   long distance = 0; 
   long echoTime;
 
@@ -128,8 +130,12 @@ int mesure_distance() {
 
   if ( distance >= 255 || distance <= 0)
   {
-    Serial.println("No measurement");
+    Serial.println("Pas de mesure...");
     distance = 255;
+  }
+  else {
+    Serial.print(distance);
+    Serial.println(" cm de l'obstacle");
   }
   return distance;
 }
@@ -137,14 +143,18 @@ int mesure_distance() {
 void DroneMode() {
   int aleatoire_vitesse;
   int aleatoire_angle;
-  int aleas;
+  
   distance = mesure_distance();
   vitesse = distance/1;
 
-  aleas = random(2);
-  
   if (distance<20) {
     moveBackward(127);
+
+    if((millis() - temps_recul) > 5000) {
+      aleas = random(2); // on tire un nouveau chiffre pour savoir si on tourne à gauche ou à droite.
+      temps_recul = millis(); //on stocke la nouvelle heure
+    }
+    
     if (aleas == 1) turn_left();
     else turn_right();
   }  
@@ -157,7 +167,7 @@ void DroneMode() {
       Serial.print(aleatoire_angle);
       Serial.println(" degrees");
       temps = millis(); //on stocke la nouvelle heure
-    }  
+    }
   }
 }
 // -------------------- END FUNCTIONS --------------
@@ -166,28 +176,48 @@ void DroneMode() {
 void loop() {
   
   if (BTmavoieserie.available()) {
-    Serial.print(BTmavoieserie.read());
-  }
-  switch (BTmavoieserie.read()) {
-    case 8:
-      moveForward(vitesse);
-      break;
-    case 2:
-      moveBackward(vitesse);
-      break;
-    case 0:
-      moveStop();
-      break;
-    case 4:
-      turn_left();
-      break;
-    case 6:
-      turn_right();
-      break;
-
-    default:
-      // if nothing matches, go into drone mode
-      DroneMode() ;
-      break;
+    OctetRecu = BTmavoieserie.read();
+    Serial.print(OctetRecu);
+    Serial.println(" : par le canal BlueTooth");
+  
+    switch (OctetRecu) {
+    // source https://play.google.com/store/apps/details?id=com.inex.BlueStickControl&hl=en
+    //This application use bluetooth connection in Serial Port Profile (SPP).Send hex code to robot as follows :
+    //0x30 = 0d48 = '0' = Stop
+    //0x38 = 0d56 = '8' = Up
+    //0x32 = 0d50 = '2' = Down
+    //0x34 = 0d52 = '4' = Left
+    //0x36 = 0d54 = '6' = Right
+    //0x41 = 0d65 = 'A' = Auto Grab
+    //0x42 = 0d66 = 'B' = Auto Release
+    //0x43 = 0d67 = 'C' = Grab
+    //0x44 = 0d68 = 'D' = Release
+    //0x45 = 0d69 = 'E' = Rotate Left
+    //0x46 = 0d70 = 'F' = Rotate Right
+      case 38:
+        moveForward(vitesse);
+        Serial.println("en avant toute");        
+        break;
+      case 50:
+        moveBackward(vitesse);
+        Serial.println("en arrière toute");        
+        break;
+      case 48:
+        digitalWrite(enablePin, LOW); // le moteur passe en roue libre
+        break;
+      case 0x52:
+        turn_left();
+        Serial.println("à gauche toute");
+        break;
+      case 6:
+        turn_right();
+        Serial.println("à droite toute");
+        break;
+  
+      default:
+        // if nothing matches, go into drone mode
+        DroneMode() ;
+        break;
+    }
   }
 }
