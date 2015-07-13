@@ -1,4 +1,4 @@
-//Code by  : Abhishek Mukhopadhyay and modified by Famibelle Médhi
+//Code by  : Abhishek Mukhopadhyay and modified a lot by Famibelle Médhi
 //Created on : May 30,2010
 //Time : 11.43 am
 
@@ -6,7 +6,20 @@
 #include <SoftwareSerial.h>
 #include <NewPing.h>
 
+
+#define START_CMD_CHAR '>'
+#define END_CMD_CHAR '\n'
+#define DIV_CMD_CHAR ','
+
+float value0, value1, value2;
+
+// Center servos
+int tiltVal = 90; 
+int panVal =90; 
+
 // Bluetooth done with http://www.wikidebrouillard.org/index.php/Android_et_arduino and http://eskimon.fr/2498-arduino-annexes-g-utiliser-module-bluetooth-hc-05
+// inpiration comes also from http://blog.miguelgrinberg.com/post/building-an-arduino-robot-part-vi-remote-control
+// and http://www.techbitar.com/bluetooth-controlled-pan-tilt-servo.html
 
 int motorPin1 = 7;    // pin 10 (Input A) on L293D
 int motorPin2 = 8;    // pin 15 (Input B) on L293D
@@ -15,7 +28,7 @@ int servoPin13 = 13;  // Servo Pin
 
 int Rx = 11;
 int Tx = 10;
-int OctetRecu = 99;
+char OctetRecu;
 
 // ultra sound detector
 int  trigger = 4;
@@ -149,7 +162,7 @@ void DroneMode() {
   distance = mesure_distance();
   vitesse = distance/1;
 
-  if (distance<30) {
+  if (distance<40) {
     moveBackward(127);
 
     if((millis() - temps_recul) > 5000) {
@@ -176,19 +189,39 @@ void DroneMode() {
 
 // -------------------- BEGIN LOOP --------------
 void loop() {
-  
+
+  int sensorType = 0;
+  unsigned long logCount = 0L;
+   
   if (DroneModeActivated) digitalWrite(Drone, HIGH); else digitalWrite(Drone, LOW);
   
   if (BTmavoieserie.available()) {
+    DroneModeActivated = false;
     OctetRecu = BTmavoieserie.read();
-    Serial.print(OctetRecu);
-    Serial.println(" : par le canal BlueTooth");
-    if (OctetRecu == 67) DroneModeActivated = true;
-    if (OctetRecu == 68) DroneModeActivated = false;
-    
-    Serial.print(DroneModeActivated);
-    Serial.println(" : DroneModeActivated");        
+    //Serial.print(OctetRecu);
+    //Serial.println(" : par le canal BlueTooth");
+    if (OctetRecu == 'C') DroneModeActivated = !DroneModeActivated; //0x43 = 0d67 = 'C' = Grab
 
+    if (OctetRecu != START_CMD_CHAR) {
+      return;
+    } // if no command start flag, return to loop().
+
+    // parse incoming pin# and value 
+    sensorType = BTmavoieserie.parseInt(); // read sensor typr
+    logCount = BTmavoieserie.parseInt();  // read total logged sensor readings
+    value0 = BTmavoieserie.parseFloat();  // 1st sensor value - value0 = X sensor reading - valeur variant de -10 à +10
+    value1 = BTmavoieserie.parseFloat();  // 2rd sensor value - value1 = Y sensor reading - valeur variant de -10 à +10
+    value2 = BTmavoieserie.parseFloat();  // 3rd sensor value
+
+    panVal = ceil(value0*9/5)*5+90;    // a faire varier entre 0 et 180 par palier de 5 degres
+    tiltVal = value1/10*255; // à faire varier entre 0 et 255
+    Serial.print(panVal); 
+    Serial.println(" : Pan Val (entre 0 et 180 degres)");
+    Serial.print(tiltVal);
+    Serial.println(" : Tilt Val");
+    if (tiltVal>0) {moveForward(tiltVal);}
+    if (tiltVal<0) {moveBackward(-tiltVal);}
+    monServo.write(panVal);
   }
   if (DroneModeActivated) {
     DroneMode();
@@ -208,28 +241,30 @@ void loop() {
     //0x44 = 0d68 = 'D' = Release
     //0x45 = 0d69 = 'E' = Rotate Left
     //0x46 = 0d70 = 'F' = Rotate Right
-      case 56:
+      case '8':
         moveForward(255);
         Serial.println("en avant toute");        
         break;
 
-      case 50:
+      case '2':
         moveBackward(255);
         Serial.println("en arrière toute");        
         break;
 
-      case 48:
+      case '0':
         digitalWrite(enablePin, LOW); // le moteur passe en roue libre
         turn_straight(); // les roues se mettent droite
         break;
 
-      case 52:
+      case '4':
         turn_left();
+        moveForward(255);
         Serial.println("à gauche toute");
         break;
 
-      case 54:
+      case '6':
         turn_right();
+        moveForward(255);
         Serial.println("à droite toute");
         break;
     }
