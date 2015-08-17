@@ -198,8 +198,8 @@ void loop() {
   if (BTmavoieserie.available()) {
     DroneModeActivated = false;
     OctetRecu = BTmavoieserie.read();
-    //Serial.print(OctetRecu);
-    //Serial.println(" : par le canal BlueTooth");
+    Serial.print(OctetRecu);
+    Serial.println(" : par le canal BlueTooth");
     if (OctetRecu == 'C') DroneModeActivated = !DroneModeActivated; //0x43 = 0d67 = 'C' = Grab
 
     if (OctetRecu != START_CMD_CHAR) {
