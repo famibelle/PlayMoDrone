@@ -117,8 +117,8 @@ int mesure_distance() {
     distance = 255;
   }
   else {
-    //Serial.print(distance);
-    //Serial.println(" cm de l'obstacle");
+    Serial.print(distance);
+    Serial.println(" cm de l'obstacle");
   }
   return distance;
 }
@@ -133,19 +133,20 @@ void DroneMode() {
   distance = mesure_distance();
   vitesse = distance/1;
 
-  if (distance<40) {
-    moveBackward(127);
-
-    if((millis() - temps_recul) > 5000) {
-      aleas = random(2); // on tire un nouveau chiffre pour savoir si on tourne à gauche ou à droite.
-      temps_recul = millis(); //on stocke la nouvelle heure
-    }
-    
-    if (aleas == 1) turn_left();
-    else turn_right();
-  }  
+  if (distance<20) {
+    while (distance <80) {
+      distance = mesure_distance();
+      moveBackward(255);
+      if((millis() - temps_recul) > 5000) {
+        aleas = random(2); // on tire un nouveau chiffre pour savoir si on tourne à gauche ou à droite.
+        temps_recul = millis(); //on stocke la nouvelle heure
+      }
+      if (aleas == 1) turn_left();
+      else turn_right();
+      }
+  }
   else {
-    if((millis() - temps) > 500) {
+    if((millis() - temps) > 1000) {
       aleatoire_vitesse = random(127,256);
       moveForward(aleatoire_vitesse);
       angle_fuite = ( LumiereGauche > (LumiereDroite + 100)) ? 180 : ((LumiereDroite > (LumiereGauche + 100)) ? 0 : 90);
